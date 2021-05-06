@@ -17,6 +17,8 @@
 #include <random>
 
 #include <future>
+
+#include <atomic>
 using namespace std;
 
 //class SimpleThread
@@ -292,9 +294,67 @@ void GenerateValueWithPromise(int value, promise<int>& promise)
 	printf("\n END GenerateValueWithPromise ");
 }
 
+long NonAtomicValue = 0;
+atomic< long> AtomicValue = 0;
+
+void reWriteVariable(long& value)
+{
+	int i = 0;
+	while (i < 1000000)
+	{
+		value++;
+		i++;
+	}
+	cout << "Thread finish"<<endl;
+}
+
+void reWriteVariableAtomic(atomic<long>& value)
+{
+	int i = 0;
+	while (i < 1000000)
+	{		
+		value = value + 1;
+		i++;
+	}
+	cout << "Atomic Thread finish" << endl;
+}
+
 int main()
 {
-	//PackageTask
+//Atomic
+	/*
+	thread myThread1(reWriteVariable, std::ref(NonAtomicValue));
+	thread myThread2(reWriteVariable, std::ref(NonAtomicValue));
+	thread myThread3(reWriteVariable, std::ref(NonAtomicValue));
+	thread myThread4(reWriteVariable, std::ref(NonAtomicValue));
+	thread myThread5(reWriteVariable, std::ref(NonAtomicValue));
+	thread myThread6(reWriteVariable, std::ref(NonAtomicValue));
+	myThread1.detach();
+	myThread2.detach();
+	myThread3.detach();
+	myThread4.detach(); 
+	myThread5.detach();
+	myThread6.detach();
+	
+	thread myThread1A(reWriteVariableAtomic, std::ref(AtomicValue));
+	thread myThread2A(reWriteVariableAtomic, std::ref(AtomicValue));
+	thread myThread3A(reWriteVariableAtomic, std::ref(AtomicValue));
+	thread myThread4A(reWriteVariableAtomic, std::ref(AtomicValue));
+	thread myThread5A(reWriteVariableAtomic, std::ref(AtomicValue));
+	thread myThread6A(reWriteVariableAtomic, std::ref(AtomicValue));
+	myThread1A.detach();
+	myThread2A.detach();
+	myThread3A.detach();
+	myThread4A.detach();
+	myThread5A.detach();
+	myThread6A.detach();
+
+	this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+	cout<<"Value ATOMIC - "<< AtomicValue <<endl;
+	cout << "Value NonAtomicValue - " << NonAtomicValue << endl;
+	*/
+//PackageTask
 
 	//packaged_task<int(int)> mytask(GenerateValue);
 	//future<int> myfuture = mytask.get_future();
@@ -302,7 +362,8 @@ int main()
 	//myfuture.get();
 	//myThread.join();
 
-	promise<int> FuturePromise;
+//Future
+	/*promise<int> FuturePromise;
 	shared_future<int> SharedFuture = FuturePromise.get_future().share();
 
 	thread PromiseThread(GenerateValueWithPromise, 5, std::ref(FuturePromise));
@@ -320,8 +381,7 @@ int main()
 	}
 	printf("FutureValue1 - %d \n", FutureValue1 = SimpleFuture.get());
 	GetFutureValueThread.join();
-	PromiseThread.join();
-
+	PromiseThread.join();*/
 
 
 //Condition Variable

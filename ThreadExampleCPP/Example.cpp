@@ -15,8 +15,11 @@
 
 #include <condition_variable>
 #include <random>
+
+#include <future>
 using namespace std;
 
+//class SimpleThread
 class ThreadClass
 {
 public:
@@ -76,6 +79,7 @@ public:
 	}
 };
 
+//SimpleThread
 void SimpleAbstractWork(string tmp)
 {
 	for (int i = 0; i < 10; i++)
@@ -120,6 +124,7 @@ void Assignment(int& a)
 	cout << "---- " << "Id Thread- " << std::this_thread::get_id() << "----Assignment Done---- " << "Result = " << a << "  ----" << endl;
 }
 
+//Mutex
 mutex myMutex1;
 mutex myMutex2;
 recursive_mutex myRecMutex;
@@ -134,7 +139,6 @@ int GetRandomInRange(const int min, const int max)
 	std::uniform_int_distribution<int> distribution(min, max);
 	return distribution(gen);
 }
-
 void PrintVector(vector<int> VectorToPrint)
 {
 	for (int i : VectorToPrint)
@@ -143,7 +147,6 @@ void PrintVector(vector<int> VectorToPrint)
 	}
 	printf("\n");
 }
-
 void RandomFillVectorBySize(vector<int> &VectorToFill, int sizeVector)
 {
 	myMutex1.lock();	
@@ -162,7 +165,6 @@ void RandomFillVectorBySize(vector<int> &VectorToFill, int sizeVector)
 	myMutex1.unlock();
 	myMutex2.unlock();
 }
-
 void FillVectorBySize(vector<int>& VectorToFill, int Value, int sizeVector)
 {
 	//unique_lock<mutex> myUnique_lock(myMutex1, defer_lock);
@@ -186,7 +188,6 @@ void FillVectorBySize(vector<int>& VectorToFill, int Value, int sizeVector)
 
 	this_thread::sleep_for(std::chrono::milliseconds(2000));
 }
-
 void RecMethod(int r)
 {
 	myRecMutex.lock();
@@ -205,6 +206,7 @@ void RecMethod(int r)
 	myRecMutex.unlock();
 }
 
+//condition_variable
 condition_variable CV_FillVector;
 bool EndConsume = false;
 
@@ -240,7 +242,6 @@ void Consume(int &value, vector<int> &Vector, int neededInt, mutex& locker)
 	}	
 	EndConsume = true;
 }
-
 void Produce(vector<int>& VectorToFill, mutex &locker)
 {
 	unique_lock<mutex> UL(locker, defer_lock);
@@ -260,9 +261,72 @@ void Produce(vector<int>& VectorToFill, mutex &locker)
 	}
 }
 
+//Future
+int GenerateValue(int value)
+{
+	int i = 0;
+	while (i < 2)
+	{
+		printf("work Second GenerateValue\n");
+		this_thread::sleep_for(std::chrono::milliseconds(1000));
+		i++;
+	}
+	return GetRandomInRange(0,100) + value;
+}
+void GetFutureValue(shared_future<int> myFuture)
+{
+	printf("\n GetFutureValue Thread - %d", myFuture.get());
+}
+void GenerateValueWithPromise(int value, promise<int>& promise)
+{
+	int i = 0;
+	while (i < 2)
+	{
+		printf("work Second GenerateValueWithPromise\n");
+		this_thread::sleep_for(std::chrono::milliseconds(1000));
+		i++;
+	}
+	promise.set_value(GetRandomInRange(0, 100) + value);
+
+	this_thread::sleep_for(std::chrono::milliseconds(3000));
+	printf("\n END GenerateValueWithPromise ");
+}
+
 int main()
 {
-	vector<int> myVector;
+	//PackageTask
+
+	//packaged_task<int(int)> mytask(GenerateValue);
+	//future<int> myfuture = mytask.get_future();
+	//thread myThread(std::ref(mytask), 10);
+	//myfuture.get();
+	//myThread.join();
+
+	promise<int> FuturePromise;
+	shared_future<int> SharedFuture = FuturePromise.get_future().share();
+
+	thread PromiseThread(GenerateValueWithPromise, 5, std::ref(FuturePromise));
+	thread GetFutureValueThread(GetFutureValue, std::ref(SharedFuture));
+
+	int FutureValue1 = 0;
+	shared_future<int> SimpleFuture = async(std::launch::async, GenerateValue, 5);
+
+	int i = 0;
+	while (i < 3)
+	{
+		printf("work Main \n");
+		this_thread::sleep_for(std::chrono::milliseconds(2000));
+		i++;
+	}
+	printf("FutureValue1 - %d \n", FutureValue1 = SimpleFuture.get());
+	GetFutureValueThread.join();
+	PromiseThread.join();
+
+
+
+//Condition Variable
+
+	/*vector<int> myVector;
 	vector<thread> threads;
 	
 	int SuccessConsumeCout = 0;
@@ -291,7 +355,7 @@ int main()
 	}	
 	printf("\n");
 	printf("End work %d ", SuccessConsumeCout);
-	ConsumeThread.join();
+	ConsumeThread.join();*/
 	
 //Mutex:
 

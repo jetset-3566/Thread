@@ -153,5 +153,5 @@ spatial/snapshots
 Game/Content/Spatial/SchemaDatabase.uasset
 
 # Rider
-/.idea
 /ThreadExample/Plugins/Developer/RiderLink/
+.idea

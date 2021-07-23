@@ -3,7 +3,21 @@
 
 #include "ThreadExampleGameModeBase.h"
 
+#include "DumbCuteCube.h"
+#include "MessageEndpointBuilder.h"
+#include "Misc/ScopeTryLock.h"
 
+void AThreadExampleGameModeBase::BusMessageHandler(const FBusStructMessage& Message,
+                                                const TSharedRef<IMessageContext, ESPMode::ThreadSafe>& Context)
+{
+	EventMessage(Message.bIsSecondName, Message.TextName);
+}
+
+void AThreadExampleGameModeBase::BusMessageHandlerNPCInfo(const FInfoNPC& Message,
+	const TSharedRef<IMessageContext, ESPMode::ThreadSafe>& Context)
+{
+	EventMessageNPC(Message);
+}
 
 void AThreadExampleGameModeBase::Tick(float DeltaSeconds)
 {
@@ -70,6 +84,18 @@ void AThreadExampleGameModeBase::Tick(float DeltaSeconds)
 void AThreadExampleGameModeBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ReceiveEndpoint = FMessageEndpoint::Builder("Resiever_AThreadExampleGameModeBase")
+										.Handling<FBusStructMessage>(this, &AThreadExampleGameModeBase::BusMessageHandler);
+
+	if(ReceiveEndpoint.IsValid())
+		ReceiveEndpoint->Subscribe<FBusStructMessage>();
+	
+	ReceiveEndpointNPCInfo = FMessageEndpoint::Builder("Resiever_NPC_AThreadExampleGameModeBase")
+									.Handling<FInfoNPC>(this, &AThreadExampleGameModeBase::BusMessageHandlerNPCInfo);
+
+	if(ReceiveEndpointNPCInfo.IsValid())
+		ReceiveEndpointNPCInfo->Subscribe<FInfoNPC>();
 }
 
 void AThreadExampleGameModeBase::EndPlay(EEndPlayReason::Type EndPlayReason)
@@ -77,6 +103,13 @@ void AThreadExampleGameModeBase::EndPlay(EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 
 	StopSimpleCounterThread();
+	StopSimpleMutexThreads();
+	if(ReceiveEndpoint.IsValid())
+		ReceiveEndpoint.Reset();
+	if (ReceiveEndpointNPCInfo.IsValid())
+	{
+		ReceiveEndpointNPCInfo.Reset();
+	}
 }
 
 //----------------------------------SimpleCounter start--------------------------------
@@ -97,6 +130,8 @@ void AThreadExampleGameModeBase::StopSimpleCounterThread()
 			//Not safe stop thread
 			MyRunnableClass_SimpleCounter->bIsStopThread = true;
 
+			bIsUseFSScopedEvent = false; // try to noy create ScopedLock when exit app
+			
 			if(!MyRunnableClass_SimpleCounter->bIsUseSafeVariable)//for kill thread stop crush
 			{
 				CurrentRunningGameModeThread_SimpleCounter->Suspend(false);	
@@ -104,22 +139,34 @@ void AThreadExampleGameModeBase::StopSimpleCounterThread()
 
 			if (SimpleCounterEvent)//event close
 			{
+				SimpleCounterEvent->Trigger();
 				//SimpleCounterEvent set on wait 10 second if we close game after 10 second exe closed
 				FPlatformProcess::ReturnSynchEventToPool(SimpleCounterEvent);
 				SimpleCounterEvent = nullptr;
 			}
 			if (SimpleCounterScopedEvent_Ref)
 			{
+				SimpleCounterScopedEvent_Ref->Trigger();
 				//SimpleCounterScopedEvent_Ref->Trigger(); use ReturnSynchEventToPool to Remove all guard 
 				FPlatformProcess::ReturnSynchEventToPool(SimpleCounterScopedEvent_Ref->Get());
-				SimpleCounterScopedEvent_Ref=nullptr;
+				SimpleCounterScopedEvent_Ref = nullptr;
 			}
 
 			//End logic runnable thread 
 			CurrentRunningGameModeThread_SimpleCounter->WaitForCompletion();
+
+			if (MyRunnableClass_SimpleCounter)
+			{
+				delete MyRunnableClass_SimpleCounter;
+				MyRunnableClass_SimpleCounter = nullptr;
+			}
+			 
+			if (CurrentRunningGameModeThread_SimpleCounter)
+			{
+				//delete CurrentRunningGameModeThread_SimpleCounter;
+				CurrentRunningGameModeThread_SimpleCounter = nullptr;	
+			}
 			
-			delete MyRunnableClass_SimpleCounter;
-			MyRunnableClass_SimpleCounter = nullptr;
 		}
 	}
 }
@@ -178,7 +225,6 @@ void AThreadExampleGameModeBase::StartSimpleCounterThreadWithScopedEvent()
 	}
 }
 
-
 int64 AThreadExampleGameModeBase::GetCounterSimpleCounterThread()
 {
 	int64 result = -1;
@@ -202,7 +248,6 @@ void AThreadExampleGameModeBase::SendRef_ScopedEvent(FScopedEvent &ScopedEvent_R
 {
 	SimpleCounterScopedEvent_Ref = &ScopedEvent_Ref;
 }
-
 //SimpleCounter end
 
 //----------------------------------SimpleAtomic start--------------------------------
@@ -214,8 +259,8 @@ void AThreadExampleGameModeBase::CreateSimpleAtomicThread()
 		if (i%2)
 			bFlag = true;
 		
-		class FSimpleAtomic_Runnable *MyRunnableClass_SimpleRandomize = new FSimpleAtomic_Runnable(ColorThread, this, IterationForRunnableCircle, bFlag, bIsUseAtomic);
-		CurrentRunningGameModeThread_SimpleRandomize.Add(FRunnableThread::Create(MyRunnableClass_SimpleRandomize, TEXT("SimpleRandomize Thread"), 0, EThreadPriority::TPri_Normal));	
+		class FSimpleAtomic_Runnable *MyRunnableClass_SimpleAtomic = new FSimpleAtomic_Runnable(ColorThread, this, IterationForRunnableCircle, bFlag, bIsUseAtomic);
+		CurrentRunningGameModeThread_SimpleRandomize.Add(FRunnableThread::Create(MyRunnableClass_SimpleAtomic, TEXT("SimpleRandomize Thread"), 0, EThreadPriority::TPri_Normal));	
 	} 	
 }
 
@@ -249,9 +294,103 @@ void AThreadExampleGameModeBase::ResetCounterSimpleAtomic()
 	NotAtomicCounter1 = 0;
 	NotAtomicCounter2 = 0;
 }
-
 //SimpleAtomic End
 
 //----------------------------------SimpleMutex start--------------------------------
-//
+void AThreadExampleGameModeBase::StopSimpleMutexThreads()
+{
+	if (CurrentRunningGameModeThread_SimpleMutex.Num() > 0)
+	{
+		for (auto RunnableThread : CurrentRunningGameModeThread_SimpleMutex)
+		{
+			if (RunnableThread)
+			{
+				RunnableThread->Kill(true);	
+			}						
+		}
+		CurrentRunningGameModeThread_SimpleMutex.Empty();
+	}
+	if (CurrentRunningGameModeThread_SimpleCollectable)
+	{
+		CurrentRunningGameModeThread_SimpleCollectable->Kill(true);
+		CurrentRunningGameModeThread_SimpleCollectable = nullptr;
+	}
+}
+
+void AThreadExampleGameModeBase::CreateSimpleMutexThread()
+{
+	for (int i = 0; i < 4; ++i)
+	{
+		bool bFlag = false;
+		if (i%2)
+			bFlag = true;
+		
+		class FSimpleMutex_Runnable *MyRunnableClass_SimpleMutex = new FSimpleMutex_Runnable(ColorThread, this, bFlag);
+		CurrentRunningGameModeThread_SimpleMutex.Add(FRunnableThread::Create(MyRunnableClass_SimpleMutex, TEXT("SimpleMutex Thread"), 0, EThreadPriority::TPri_Normal));	
+	}	 	
+}
+
+void AThreadExampleGameModeBase::CreateCollectableThread()
+{
+	class FSimpleCollectable_Runnable *MyRunnableClass_SimpleCollectable = new FSimpleCollectable_Runnable(ColorThread, this);
+	CurrentRunningGameModeThread_SimpleCollectable = FRunnableThread::Create(MyRunnableClass_SimpleCollectable, TEXT("SimpleMutex Thread"), 0, EThreadPriority::TPri_Normal);
+}
+
+TArray<FInfoNPC> AThreadExampleGameModeBase::GetNPCInfo()
+{
+	TArray<FInfoNPC> Result;
+	return Result;
+}
+
+TArray<FString> AThreadExampleGameModeBase::GetSecondNames()
+{
+	TArray<FString> Result;
+	FString OneRead;
+	while (SecondNames.Dequeue(OneRead))
+	{
+		Result.Add(OneRead);
+	}
+	CurrentSecondName.Append(Result);
+	return CurrentSecondName;
+}
+
+TArray<FString> AThreadExampleGameModeBase::GetFirstNames()
+{
+	{
+		FScopeLock myScopeLock(&FirstNameMutex);
+	
+		return  FirstNames;		
+	}		
+}
+
+void AThreadExampleGameModeBase::Clear()
+{
+	FirstNames.Empty();
+	SecondNames.Empty();
+	CurrentSecondName.Empty();
+}
+
+void AThreadExampleGameModeBase::EventMessage(bool bIsSecond, FString StringData)
+{
+	OnUpdateByThread.Broadcast(bIsSecond, StringData);
+}
+
+void AThreadExampleGameModeBase::EventMessageNPC(FInfoNPC NPCData)
+{
+	OnUpdateByThreadNPC.Broadcast(NPCData);
+
+	UWorld *myWorld = GetWorld();
+	if (myWorld)
+	{
+		FVector SpawnLoc = FVector(1200.0f, 100.0f * cubeCout, 500.0f);
+		FRotator SpawnRot;
+		ADumbCuteCube* myCuteCube;
+		myCuteCube = Cast<ADumbCuteCube>(myWorld->SpawnActor(SpawnObjectThread, &SpawnLoc, &SpawnRot, FActorSpawnParameters()));
+		if (myCuteCube)
+		{
+			myCuteCube->Init(NPCData);
+			cubeCout++;
+		}		
+	}
+}
 //SimpleMutex End

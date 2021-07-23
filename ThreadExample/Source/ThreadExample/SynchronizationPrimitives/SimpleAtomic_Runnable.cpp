@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "FSimpleAtomic_Runnable.h"
+#include "SimpleAtomic_Runnable.h"
 #include "ThreadExample/ThreadExampleGameModeBase.h"
 
 FSimpleAtomic_Runnable::FSimpleAtomic_Runnable(FColor Color, AThreadExampleGameModeBase* OwnerActor, uint32 NeedIteration, bool SeparateLogic, bool bIsUseAtomic)

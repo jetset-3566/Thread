@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 
-#include "HAL/RunnableThread.h"
+#include "MessageEndpoint.h"
 #include "HAL/ThreadManager.h"
 
 class AThreadExampleGameModeBase;
@@ -14,18 +14,22 @@ class AThreadExampleGameModeBase;
 class THREADEXAMPLE_API FSimpleMutex_Runnable : public FRunnable
 {
 	public:
-	FSimpleMutex_Runnable(FColor Color, AThreadExampleGameModeBase* OwnerActor);
+	FSimpleMutex_Runnable(FColor Color, AThreadExampleGameModeBase* OwnerActor, bool bIsSecondMode);
 	virtual ~FSimpleMutex_Runnable() override;
 
 	//setting
 	FColor ThreadColor;
 	AThreadExampleGameModeBase *GameMode_Ref = nullptr;
-	
+	bool bIsGenerateSecondName = false;
+	FThreadSafeBool bIsStopNameGenerator = false;
 	//virtual bool Init() override;
 	virtual uint32 Run() override;
-	//virtual void Stop() override;
-	//virtual void Exit() override;
+	virtual void Stop() override;
+	virtual void Exit() override;
+	
+	int8 GetRandom(int8 min, int8 max);
+	bool GetRandom();
 
-	bool SeparateLogicFlag;
-	bool bIsUseAtomicFlag;
+	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> SenderEndpoint;
 };
+

@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 
-#include "HAL/RunnableThread.h"
 #include "HAL/ThreadManager.h"
 
 class AThreadExampleGameModeBase;

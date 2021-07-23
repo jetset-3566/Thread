@@ -9,14 +9,15 @@
 #include "HAL/RunnableThread.h"
 
 //custom 
+#include "IMessageBus.h"
 
-
+#include "ThreadExample/SynchronizationPrimitives/SimpleAtomic_Runnable.h"
 #include "ThreadExample/SynchronizationPrimitives/SimpleCounter_Runnable.h"
-#include "ThreadExample/SynchronizationPrimitives/FSimpleAtomic_Runnable.h"
-
-
+#include "ThreadExample/SynchronizationPrimitives/SimpleMutex_Runnable.h"
+#include "ThreadExample/SynchronizationPrimitives/SimpleCollectable_Runnable.h"
 
 #include "ThreadExampleGameModeBase.generated.h"
+
 USTRUCT(BlueprintType, Atomic)
 struct FInfoNPC
 {
@@ -37,9 +38,26 @@ struct my_struct
 	//std::string SecondName; //we 'can't use because requires string must to be trivially copyable, copy constructible, move constructible, copy assignable, and move assignable.
 };
 
+USTRUCT()
+struct FBusStructMessage
+{
+	GENERATED_BODY()
+
+	
+	bool bIsSecondName = false;
+	FString TextName = "None";
+	FBusStructMessage(bool InBool = false, FString InText = "None") : bIsSecondName(InBool), TextName(InText) {}
+	
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnUpdateByThread, bool, bIsSecond, FString, StringData);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnUpdateByThreadNPC, FInfoNPC, NPCData);
 
 /**
- * 
+ * All setting and control thread BP-CPP here
+ * SimpleCounter - how control thread and rule thread destroy with FThreadSafe variable (pause, kill, stop) and with semaphore on FEvent and FScopedEvent
+ * SimpleAtomic - how save read write in thread with atomic - FPlatformAtomic and std::atomic
+ * SimpleMutex - how save read write in thread with Locking - FCriticalSection and FSpinLocks and FScopeLock
  */
 UCLASS()
 class THREADEXAMPLE_API AThreadExampleGameModeBase : public AGameModeBase
@@ -47,7 +65,21 @@ class THREADEXAMPLE_API AThreadExampleGameModeBase : public AGameModeBase
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(BlueprintAssignable)
+	FOnUpdateByThread OnUpdateByThread;
+	UPROPERTY(BlueprintAssignable)
+	FOnUpdateByThreadNPC OnUpdateByThreadNPC;
+	
 
+	// Message handler for FJumpNowMessage, called by the Message Bus when a message arrives
+	void BusMessageHandler(const struct FBusStructMessage& Message,
+	                    const TSharedRef<IMessageContext, ESPMode::ThreadSafe>& Context);
+	void BusMessageHandlerNPCInfo(const struct FInfoNPC& Message,
+						const TSharedRef<IMessageContext, ESPMode::ThreadSafe>& Context);
+	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> ReceiveEndpoint;
+	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> ReceiveEndpointNPCInfo;
+	
+	
 	UPROPERTY(BlueprintReadWrite)
 	FString GlobalString = "None";
 	UPROPERTY(BlueprintReadWrite)
@@ -118,10 +150,48 @@ public:
 	std::atomic_uint16_t AtomicCounter2;
 	int16 NotAtomicCounter1;
 	int16 NotAtomicCounter2;
+	//std::atomic<my_struct> my_Struct; we can set atomic struct and more, (warning) write and read must be full on all variables)
 
 	//SimpleMutex Setting
+	TArray<FRunnableThread*> CurrentRunningGameModeThread_SimpleMutex;
+	FRunnableThread* CurrentRunningGameModeThread_SimpleCollectable;
+	
 	//SimpleMutex Control
+	UFUNCTION(BlueprintCallable)
+	void StopSimpleMutexThreads();
+	UFUNCTION(BlueprintCallable)
+	void CreateSimpleMutexThread();
+	UFUNCTION(BlueprintCallable)
+	void CreateCollectableThread();
+	TArray<FInfoNPC> GetNPCInfo();
+	UFUNCTION(BlueprintCallable)
+	TArray<FString> GetSecondNames();
+	UFUNCTION(BlueprintCallable)
+	TArray<FString> GetFirstNames();
+	UFUNCTION(BlueprintCallable)
+	void Clear();
+
+	void EventMessage(bool bIsSecond, FString StringData);
+	void EventMessageNPC(FInfoNPC NPCData);
 	//SimpleMutex storage
-	TQueue<FName,EQueueMode::Spsc> FirstNames;
-	TQueue<FName,EQueueMode::Spsc> SecondNames;
+	TArray<FString> FirstNames;
+	
+	FCriticalSection FirstNameMutex;
+	TQueue<FString,EQueueMode::Mpsc> SecondNames;
+
+	FCriticalSection NPCInfoMutex;
+	TArray<FInfoNPC> NPCInfo;
+
+	TArray<FString> CurrentSecondName;
+	//TLockFreePointerList //Same TQueue (TQueue under the hood linked list(LockFreePointerList))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimpleMutex setting")
+	TSubclassOf<class ADumbCuteCube> SpawnObjectThread;
+	int32 cubeCout =0;
 };
+
+
+
+
+
+
+

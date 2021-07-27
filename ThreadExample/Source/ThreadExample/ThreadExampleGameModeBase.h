@@ -109,7 +109,7 @@ public:
 	class FSimpleCounter_Runnable *MyRunnableClass_SimpleCounter = nullptr;
 	FRunnableThread* CurrentRunningGameModeThread_SimpleCounter = nullptr;
 	FEvent *SimpleCounterEvent;
-	
+	FScopedEvent* SimpleCounterScopedEvent_Ref;
 	
 	//SimpleCounter Control
 	UFUNCTION(BlueprintCallable)
@@ -128,10 +128,10 @@ public:
 	int64 GetCounterSimpleCounterThread();
 
 	void SendRef_ScopedEvent(FScopedEvent &ScopedEvent_Ref);
-	FScopedEvent* SimpleCounterScopedEvent_Ref;
+	
 	
 	//SimpleAtomic Setting
-	TArray<FRunnableThread*> CurrentRunningGameModeThread_SimpleRandomize;
+	TArray<FRunnableThread*> CurrentRunningGameModeThread_SimpleAtomic;
 	UPROPERTY(BlueprintReadWrite, Category = "SimpleAtomic setting")
 	int32 IterationForRunnableCircle = 100000;
 	UPROPERTY(BlueprintReadWrite, Category = "SimpleAtomic setting")
@@ -187,6 +187,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimpleMutex setting")
 	TSubclassOf<class ADumbCuteCube> SpawnObjectThread;
 	int32 cubeCout =0;
+
+	//ParallelFor
+	UFUNCTION(BlueprintCallable)
+	void StartParallelFor();
+	UPROPERTY(BlueprintReadWrite)
+	int32 ParrallelCout = 0;
 };
 
 

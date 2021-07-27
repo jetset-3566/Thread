@@ -23,24 +23,12 @@ void AThreadExampleGameModeBase::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	
-	/*FString myThreadType = "None";
-	uint32 ThreadId = FPlatformTLS::GetCurrentThreadId();
-
-	UE_LOG(LogTemp, Error, TEXT("AThreadExampleGameModeBase::Tick Id - %d  Name - %s , Priority - %s"), ThreadId, *FThreadManager::Get().GetThreadName(ThreadId), *myThreadType);*/
-
 	if (ShowDebugAllThread)
 	{
 		FThreadManager::Get().ForEachThread([&](uint32 ThreadId, FRunnableThread* Runnable)
 		{
 			FString myThreadType = "None";
-			//UEnum::GetValueAsString<EThreadPriority>(Runnable->GetThreadPriority(), myThreadType);
-
-		/*	const UEnum* EnumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("EThreadPriority"), true);
-		if (!EnumPtr) { NSLOCTEXT("Invalid", "Invalid", "Invalid");}
-		else
-		myThreadType = EnumPtr->GetEnumName(Runnable->GetThreadPriority());*/
-
-
+			
 			switch (Runnable->GetThreadPriority())
 			{
 			case TPri_Normal:
@@ -104,21 +92,19 @@ void AThreadExampleGameModeBase::EndPlay(EEndPlayReason::Type EndPlayReason)
 
 	StopSimpleCounterThread();
 	StopSimpleMutexThreads();
+	
 	if(ReceiveEndpoint.IsValid())
 		ReceiveEndpoint.Reset();
 	if (ReceiveEndpointNPCInfo.IsValid())
-	{
 		ReceiveEndpointNPCInfo.Reset();
-	}
 }
 
-//----------------------------------SimpleCounter start--------------------------------
 void AThreadExampleGameModeBase::PrintMessage(FString message)
 {
-	//UE_LOG(LogTemp, Error, TEXT("AThreadExampleGameModeBase::printMessage()"));
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, message);
 }
 
+//----------------------------------SimpleCounter start--------------------------------
 void AThreadExampleGameModeBase::StopSimpleCounterThread()
 {
 	if (CurrentRunningGameModeThread_SimpleCounter)
@@ -130,25 +116,25 @@ void AThreadExampleGameModeBase::StopSimpleCounterThread()
 			//Not safe stop thread
 			MyRunnableClass_SimpleCounter->bIsStopThread = true;
 
-			bIsUseFSScopedEvent = false; // try to noy create ScopedLock when exit app
+			bIsUseFSScopedEvent = false; // try to not create ScopedLock when exit app, if scopedEvent go after event
 			
-			if(!MyRunnableClass_SimpleCounter->bIsUseSafeVariable)//for kill thread stop crush
-			{
+			//if(!MyRunnableClass_SimpleCounter->bIsUseSafeVariable)//for stop thread, stop crush - if thread was in pause state
+			//{
 				CurrentRunningGameModeThread_SimpleCounter->Suspend(false);	
-			}
+			//}
 
 			if (SimpleCounterEvent)//event close
-			{
-				SimpleCounterEvent->Trigger();
+			{				
+				SimpleCounterEvent->Trigger();//if thread of app wait, trigger for exit
 				//SimpleCounterEvent set on wait 10 second if we close game after 10 second exe closed
-				FPlatformProcess::ReturnSynchEventToPool(SimpleCounterEvent);
-				SimpleCounterEvent = nullptr;
+				FPlatformProcess::ReturnSynchEventToPool(SimpleCounterEvent);//best practice for Event
+				SimpleCounterEvent = nullptr;//for not wait second wait if we want exit 
 			}
 			if (SimpleCounterScopedEvent_Ref)
 			{
-				SimpleCounterScopedEvent_Ref->Trigger();
-				//SimpleCounterScopedEvent_Ref->Trigger(); use ReturnSynchEventToPool to Remove all guard 
-				FPlatformProcess::ReturnSynchEventToPool(SimpleCounterScopedEvent_Ref->Get());
+				SimpleCounterScopedEvent_Ref->Trigger();//if thread of app wait, trigger for exit
+				
+				//FPlatformProcess::ReturnSynchEventToPool(SimpleCounterScopedEvent_Ref->Get());
 				SimpleCounterScopedEvent_Ref = nullptr;
 			}
 
@@ -157,13 +143,13 @@ void AThreadExampleGameModeBase::StopSimpleCounterThread()
 
 			if (MyRunnableClass_SimpleCounter)
 			{
-				delete MyRunnableClass_SimpleCounter;
+				//delete MyRunnableClass_SimpleCounter; // not need call destructor GC do it
 				MyRunnableClass_SimpleCounter = nullptr;
 			}
 			 
 			if (CurrentRunningGameModeThread_SimpleCounter)
 			{
-				//delete CurrentRunningGameModeThread_SimpleCounter;
+				//delete CurrentRunningGameModeThread_SimpleCounter; // not need call destructor GC do it
 				CurrentRunningGameModeThread_SimpleCounter = nullptr;	
 			}
 			
@@ -175,17 +161,17 @@ void AThreadExampleGameModeBase::KillSimpleCounterThread(bool bIsShouldWait)
 {
 	if (CurrentRunningGameModeThread_SimpleCounter)
 	{
-		if (MyRunnableClass_SimpleCounter)
-		{
-			CurrentRunningGameModeThread_SimpleCounter->Suspend(false);
-			CurrentRunningGameModeThread_SimpleCounter->Kill(bIsShouldWait);
-		}
+		//if (MyRunnableClass_SimpleCounter) not needed
+		CurrentRunningGameModeThread_SimpleCounter->Suspend(false);
+		CurrentRunningGameModeThread_SimpleCounter->Kill(bIsShouldWait);
+		CurrentRunningGameModeThread_SimpleCounter = nullptr;
+		MyRunnableClass_SimpleCounter = nullptr;
 	}
 }
 
 bool AThreadExampleGameModeBase::SwitchRunStateSimpleCounterThread(bool bIsPause)
 {
-	if (CurrentRunningGameModeThread_SimpleCounter && MyRunnableClass_SimpleCounter)
+	if (CurrentRunningGameModeThread_SimpleCounter)
 	{
 		CurrentRunningGameModeThread_SimpleCounter->Suspend(bIsPause);		
 	}
@@ -205,7 +191,8 @@ void AThreadExampleGameModeBase::CreateSimpleCounterThread()
 		{
 			MyRunnableClass_SimpleCounter = new FSimpleCounter_Runnable(ColorThread, this, bIsUseSafeVariable);	
 		}	
-		CurrentRunningGameModeThread_SimpleCounter = FRunnableThread::Create(MyRunnableClass_SimpleCounter, TEXT("SimpleCounter Thread"), 0, EThreadPriority::TPri_Normal);	
+		CurrentRunningGameModeThread_SimpleCounter = FRunnableThread::Create(MyRunnableClass_SimpleCounter, TEXT("SimpleCounter Thread1"), 0, EThreadPriority::TPri_Normal);
+
 	}	
 }
 
@@ -222,6 +209,7 @@ void AThreadExampleGameModeBase::StartSimpleCounterThreadWithScopedEvent()
 	if (SimpleCounterScopedEvent_Ref)
 	{
 		SimpleCounterScopedEvent_Ref->Trigger();
+		SimpleCounterScopedEvent_Ref = nullptr;
 	}
 }
 
@@ -260,7 +248,7 @@ void AThreadExampleGameModeBase::CreateSimpleAtomicThread()
 			bFlag = true;
 		
 		class FSimpleAtomic_Runnable *MyRunnableClass_SimpleAtomic = new FSimpleAtomic_Runnable(ColorThread, this, IterationForRunnableCircle, bFlag, bIsUseAtomic);
-		CurrentRunningGameModeThread_SimpleRandomize.Add(FRunnableThread::Create(MyRunnableClass_SimpleAtomic, TEXT("SimpleRandomize Thread"), 0, EThreadPriority::TPri_Normal));	
+		CurrentRunningGameModeThread_SimpleAtomic.Add(FRunnableThread::Create(MyRunnableClass_SimpleAtomic, TEXT("SimpleRandomize Thread"), 0, EThreadPriority::TPri_Normal));	
 	} 	
 }
 
@@ -394,3 +382,22 @@ void AThreadExampleGameModeBase::EventMessageNPC(FInfoNPC NPCData)
 	}
 }
 //SimpleMutex End
+
+//ParallelFor
+void AThreadExampleGameModeBase::StartParallelFor()
+{
+	ParallelFor( 500, [&](int32 index)// лямбда-выражение дает в качестве параметра индекс элемента, которым можно управлять
+	{		
+		int32 cout = 0;
+		for (int i = 0; i < 1000000; ++i)
+		{
+			cout++;
+		}
+		//can add mutex
+		ParrallelCout += cout;
+	} );
+}
+
+
+
+

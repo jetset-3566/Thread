@@ -45,7 +45,7 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	int32 CurrentCalc;
 
-	TQueue<int32> ThreadCalcQueue;//потокобезопасна€ очередьё,?
+	TQueue<int32> ThreadCalcQueue;//safe
 
 	UFUNCTION()
 	void KillRunnableExample();

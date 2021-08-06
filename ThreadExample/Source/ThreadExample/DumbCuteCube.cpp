@@ -3,7 +3,6 @@
 
 #include "DumbCuteCube.h"
 
-
 // Sets default values
 ADumbCuteCube::ADumbCuteCube()
 {
@@ -23,17 +22,16 @@ void ADumbCuteCube::BeginPlay()
 void ADumbCuteCube::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void ADumbCuteCube::Init(FInfoNPC InitInfo)
 {
-	InitBP(InitInfo.Id, InitInfo.Name, InitInfo.SecondName);
+	InitBP(InitInfo);
 }
 
-void ADumbCuteCube::InitBP_Implementation(int32 cout, const FString& Name, const FString& SecondName)
+void ADumbCuteCube::InitBP_Implementation(FInfoNPC InitInfo)
 {
-	
+	//BP
 }
 
 

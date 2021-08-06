@@ -5,12 +5,13 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 
-//need to
+//need to control runnable
 #include "HAL/RunnableThread.h"
 
-//custom 
+//need for messageBus
 #include "IMessageBus.h"
 
+//Custom Runnable class
 #include "ThreadExample/SynchronizationPrimitives/SimpleAtomic_Runnable.h"
 #include "ThreadExample/SynchronizationPrimitives/SimpleCounter_Runnable.h"
 #include "ThreadExample/SynchronizationPrimitives/SimpleMutex_Runnable.h"
@@ -39,18 +40,17 @@ struct my_struct
 };
 
 USTRUCT()
-struct FBusStructMessage
+struct FBusStructMessage_NameGenerator
 {
 	GENERATED_BODY()
 
-	
 	bool bIsSecondName = false;
 	FString TextName = "None";
-	FBusStructMessage(bool InBool = false, FString InText = "None") : bIsSecondName(InBool), TextName(InText) {}
+	FBusStructMessage_NameGenerator(bool InBool = false, FString InText = "None") : bIsSecondName(InBool), TextName(InText) {}
 	
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnUpdateByThread, bool, bIsSecond, FString, StringData);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnUpdateByNameGeneratorThreads, bool, bIsSecond, FString, StringData);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnUpdateByThreadNPC, FInfoNPC, NPCData);
 
 /**
@@ -66,19 +66,19 @@ class THREADEXAMPLE_API AThreadExampleGameModeBase : public AGameModeBase
 
 public:
 	UPROPERTY(BlueprintAssignable)
-	FOnUpdateByThread OnUpdateByThread;
+	FOnUpdateByNameGeneratorThreads OnUpdateByNameGeneratorThreads;
 	UPROPERTY(BlueprintAssignable)
 	FOnUpdateByThreadNPC OnUpdateByThreadNPC;
 	
-
+	//MessageBus Setting start
 	// Message handler for FJumpNowMessage, called by the Message Bus when a message arrives
-	void BusMessageHandler(const struct FBusStructMessage& Message,
+	void BusMessageHandler(const struct FBusStructMessage_NameGenerator& Message,
 	                    const TSharedRef<IMessageContext, ESPMode::ThreadSafe>& Context);
 	void BusMessageHandlerNPCInfo(const struct FInfoNPC& Message,
 						const TSharedRef<IMessageContext, ESPMode::ThreadSafe>& Context);
-	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> ReceiveEndpoint;
-	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> ReceiveEndpointNPCInfo;
-	
+	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> ReceiveEndPoint_NameGenerator;
+	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> ReceiveEndpoint_NPCInfo;
+	//MessageBus Setting end
 	
 	UPROPERTY(BlueprintReadWrite)
 	FString GlobalString = "None";
@@ -190,9 +190,17 @@ public:
 
 	//ParallelFor
 	UFUNCTION(BlueprintCallable)
-	void StartParallelFor();
+	void StartParallelFor1();
 	UPROPERTY(BlueprintReadWrite)
-	int32 ParrallelCout = 0;
+	int32 ParallelCout1 = 0;
+	UFUNCTION(BlueprintCallable)
+	void StartParallelFor2();
+	UPROPERTY(BlueprintReadWrite)
+	int32 ParallelCout2 = 0;
+	UFUNCTION(BlueprintCallable)
+	void StartParallelFor3();
+	UPROPERTY(BlueprintReadWrite)
+	int32 ParallelCout3 = 0;
 };
 
 

@@ -2,10 +2,11 @@
 
 
 #include "SimpleMutex_Runnable.h"
-
+//need for random generate
 #include <random>
-
+//need for build receiver
 #include "MessageEndpointBuilder.h"
+//for ScopeLock
 #include "Misc/ScopeTryLock.h"
 #include "ThreadExample/ThreadExampleGameModeBase.h"
 
@@ -71,12 +72,12 @@ uint32 FSimpleMutex_Runnable::Run()
 		}
 
 		FPlatformProcess::Sleep(1.88f);
-		if (bIsGenerateSecondName)
+		if (!bIsGenerateSecondName)
 		{
 			GameMode_Ref->FirstNameMutex.Lock();
 
 			GameMode_Ref->FirstNames.Add(Result);
-			//FPlatformProcess::Sleep(0.02f);
+			
 			GameMode_Ref->FirstNameMutex.Unlock();
 			
 		}
@@ -85,16 +86,12 @@ uint32 FSimpleMutex_Runnable::Run()
 			GameMode_Ref->SecondNames.Enqueue(Result);
 		}
 
-		//IMessageBus sender sending
-		/*FBusStructMessage* BusStructMessage = new FBusStructMessage;
-		BusStructMessage->TextName = Result;
-		BusStructMessage->bIsSecondName = bIsGenerateSecondName;*/
+		//IMessageBus send
 		if(SenderEndpoint.IsValid())
-			SenderEndpoint->Publish<FBusStructMessage>( new FBusStructMessage(bIsGenerateSecondName,Result));														
+			SenderEndpoint->Publish<FBusStructMessage_NameGenerator>( new FBusStructMessage_NameGenerator(bIsGenerateSecondName,Result));														
 		//GameMode_Ref->Delegate - standard delegate ue4 not working near threads
 
-		/*delete BusStructMessage;
-		BusStructMessage = nullptr;*/
+
 	}
 	
 	return 0;
@@ -107,8 +104,9 @@ void FSimpleMutex_Runnable::Stop()
 
 void FSimpleMutex_Runnable::Exit()
 {
-	if(SenderEndpoint.IsValid())
-		SenderEndpoint->Subscribe<FBusStructMessage>();
+	if (SenderEndpoint.IsValid())
+		SenderEndpoint.Reset();
+	
 	GameMode_Ref = nullptr;
 }
 

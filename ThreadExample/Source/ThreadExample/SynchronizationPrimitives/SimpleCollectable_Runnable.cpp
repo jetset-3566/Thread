@@ -2,9 +2,8 @@
 
 
 #include "SimpleCollectable_Runnable.h"
-
+//need for build receiver
 #include "MessageEndpointBuilder.h"
-
 #include "ThreadExample/ThreadExampleGameModeBase.h"
 
 FSimpleCollectable_Runnable::FSimpleCollectable_Runnable(FColor Color, AThreadExampleGameModeBase* OwnerActor)
@@ -62,7 +61,7 @@ uint32 FSimpleCollectable_Runnable::Run()
 			SenderEndpoint->Publish<FInfoNPC>(new FInfoNPC(newNPC));
 		
 		//how spawn? check AThreadExampleGameModeBase::EventMessageNPC
-		//myCuteCube = Cast<ADumbCuteCube>(myWorld->SpawnActor(GameMode_Ref->SpawnObjectThread); //we can't create AActor object UObject in thread not InGameThread, not recommender and not safe	
+		//myCuteCube = Cast<ADumbCuteCube>(myWorld->SpawnActor(GameMode_Ref->SpawnObjectThread); //we can't create AActor object UObject in Separate Thread only in InGameThread, not recommender and not safe
 	}
 	return 0;
 }
@@ -74,5 +73,8 @@ void FSimpleCollectable_Runnable::Stop()
 
 void FSimpleCollectable_Runnable::Exit()
 {
+	if(SenderEndpoint.IsValid())
+		SenderEndpoint.Reset();
+	
 	GameMode_Ref = nullptr;
 }

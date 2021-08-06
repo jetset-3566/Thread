@@ -7,7 +7,7 @@
 #include "MessageEndpointBuilder.h"
 #include "Misc/ScopeTryLock.h"
 
-void AThreadExampleGameModeBase::BusMessageHandler(const FBusStructMessage& Message,
+void AThreadExampleGameModeBase::BusMessageHandler(const FBusStructMessage_NameGenerator& Message,
                                                 const TSharedRef<IMessageContext, ESPMode::ThreadSafe>& Context)
 {
 	EventMessage(Message.bIsSecondName, Message.TextName);
@@ -73,17 +73,17 @@ void AThreadExampleGameModeBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	ReceiveEndpoint = FMessageEndpoint::Builder("Resiever_AThreadExampleGameModeBase")
-										.Handling<FBusStructMessage>(this, &AThreadExampleGameModeBase::BusMessageHandler);
+	ReceiveEndPoint_NameGenerator = FMessageEndpoint::Builder("Resiever_AThreadExampleGameModeBase")
+										.Handling<FBusStructMessage_NameGenerator>(this, &AThreadExampleGameModeBase::BusMessageHandler);
 
-	if(ReceiveEndpoint.IsValid())
-		ReceiveEndpoint->Subscribe<FBusStructMessage>();
+	if(ReceiveEndPoint_NameGenerator.IsValid())
+		ReceiveEndPoint_NameGenerator->Subscribe<FBusStructMessage_NameGenerator>();
 	
-	ReceiveEndpointNPCInfo = FMessageEndpoint::Builder("Resiever_NPC_AThreadExampleGameModeBase")
+	ReceiveEndpoint_NPCInfo = FMessageEndpoint::Builder("Resiever_NPC_AThreadExampleGameModeBase")
 									.Handling<FInfoNPC>(this, &AThreadExampleGameModeBase::BusMessageHandlerNPCInfo);
 
-	if(ReceiveEndpointNPCInfo.IsValid())
-		ReceiveEndpointNPCInfo->Subscribe<FInfoNPC>();
+	if(ReceiveEndpoint_NPCInfo.IsValid())
+		ReceiveEndpoint_NPCInfo->Subscribe<FInfoNPC>();
 }
 
 void AThreadExampleGameModeBase::EndPlay(EEndPlayReason::Type EndPlayReason)
@@ -93,10 +93,10 @@ void AThreadExampleGameModeBase::EndPlay(EEndPlayReason::Type EndPlayReason)
 	StopSimpleCounterThread();
 	StopSimpleMutexThreads();
 	
-	if(ReceiveEndpoint.IsValid())
-		ReceiveEndpoint.Reset();
-	if (ReceiveEndpointNPCInfo.IsValid())
-		ReceiveEndpointNPCInfo.Reset();
+	if(ReceiveEndPoint_NameGenerator.IsValid())
+		ReceiveEndPoint_NameGenerator.Reset();
+	if (ReceiveEndpoint_NPCInfo.IsValid())
+		ReceiveEndpoint_NPCInfo.Reset();
 }
 
 void AThreadExampleGameModeBase::PrintMessage(FString message)
@@ -116,19 +116,17 @@ void AThreadExampleGameModeBase::StopSimpleCounterThread()
 			//Not safe stop thread
 			MyRunnableClass_SimpleCounter->bIsStopThread = true;
 
-			bIsUseFSScopedEvent = false; // try to not create ScopedLock when exit app, if scopedEvent go after event
+			bIsUseFSScopedEvent = false; // try to not create ScopedLock when exit app, if scopedEvent go after FEvent
 			
-			//if(!MyRunnableClass_SimpleCounter->bIsUseSafeVariable)//for stop thread, stop crush - if thread was in pause state
-			//{
-				CurrentRunningGameModeThread_SimpleCounter->Suspend(false);	
-			//}
+			//if thread was paused, Resume Thread - for end loop thread
+			CurrentRunningGameModeThread_SimpleCounter->Suspend(false);	
 
 			if (SimpleCounterEvent)//event close
 			{				
 				SimpleCounterEvent->Trigger();//if thread of app wait, trigger for exit
 				//SimpleCounterEvent set on wait 10 second if we close game after 10 second exe closed
 				FPlatformProcess::ReturnSynchEventToPool(SimpleCounterEvent);//best practice for Event
-				SimpleCounterEvent = nullptr;//for not wait second wait if we want exit 
+				SimpleCounterEvent = nullptr;//for not wait second(FEvent) wait() if we want exit app
 			}
 			if (SimpleCounterScopedEvent_Ref)
 			{
@@ -143,13 +141,13 @@ void AThreadExampleGameModeBase::StopSimpleCounterThread()
 
 			if (MyRunnableClass_SimpleCounter)
 			{
-				//delete MyRunnableClass_SimpleCounter; // not need call destructor GC do it
+				//delete MyRunnableClass_SimpleCounter; // not need call, destructor GC do it
 				MyRunnableClass_SimpleCounter = nullptr;
 			}
 			 
 			if (CurrentRunningGameModeThread_SimpleCounter)
 			{
-				//delete CurrentRunningGameModeThread_SimpleCounter; // not need call destructor GC do it
+				//delete CurrentRunningGameModeThread_SimpleCounter; // not need call, destructor GC do it
 				CurrentRunningGameModeThread_SimpleCounter = nullptr;	
 			}
 			
@@ -360,7 +358,7 @@ void AThreadExampleGameModeBase::Clear()
 
 void AThreadExampleGameModeBase::EventMessage(bool bIsSecond, FString StringData)
 {
-	OnUpdateByThread.Broadcast(bIsSecond, StringData);
+	OnUpdateByNameGeneratorThreads.Broadcast(bIsSecond, StringData);
 }
 
 void AThreadExampleGameModeBase::EventMessageNPC(FInfoNPC NPCData)
@@ -383,21 +381,56 @@ void AThreadExampleGameModeBase::EventMessageNPC(FInfoNPC NPCData)
 }
 //SimpleMutex End
 
+
 //ParallelFor
-void AThreadExampleGameModeBase::StartParallelFor()
+void AThreadExampleGameModeBase::StartParallelFor1()
 {
-	ParallelFor( 500, [&](int32 index)// лямбда-выражение дает в качестве параметра индекс элемента, которым можно управлять
-	{		
+	FCriticalSection ParallelMutex1;
+	ParallelFor( 10, [&](int32 index)// lambda, index - index of number parallel for
+	{
+		FPlatformProcess::Sleep(0.001f);
 		int32 cout = 0;
-		for (int i = 0; i < 1000000; ++i)
-		{
+		for (int i = 0; i < 50; ++i)
+		{			
 			cout++;
 		}
-		//can add mutex
-		ParrallelCout += cout;
-	} );
+		ParallelMutex1.Lock();
+		ParallelCout1 += cout;
+		ParallelMutex1.Unlock();
+	} ,EParallelForFlags::None);
 }
 
+void AThreadExampleGameModeBase::StartParallelFor2()
+{
+	
+	const auto Function = [&](int32 index)
+	{
+	FPlatformProcess::Sleep(0.1f);
+	int32 cout = 0;
+	for (int i = 0; i < 50; ++i)
+	{			
+	cout--;
+	}
+	ParallelCout2 += cout;
+	};
 
+	ParallelForTemplate(10,Function,EParallelForFlags::BackgroundPriority);
+}
 
-
+void AThreadExampleGameModeBase::StartParallelFor3()
+{
+	ParallelForWithPreWork(10,[&](int32 index)
+{
+	for (int i = 0; i < 50; ++i)
+	{
+		//FPlatformProcess::Sleep(0.02f);
+		ParallelCout3++;
+		UE_LOG(LogTemp, Error, TEXT("i START ParallelForWithPreWork"));
+	}
+},[]()
+{
+	UE_LOG(LogTemp, Error, TEXT("i START parallel help work"));
+	//FPlatformProcess::Sleep(5.0f);
+	UE_LOG(LogTemp, Error, TEXT("i FINISH parallel help work"));
+},EParallelForFlags::BackgroundPriority);
+}

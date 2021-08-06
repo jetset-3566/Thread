@@ -27,5 +27,5 @@ public:
 	void Init(FInfoNPC InitInfo);
 
 	UFUNCTION(BlueprintNativeEvent)
-	void InitBP(int32 cout, const FString& Name, const FString& SecondName);
+	void InitBP(FInfoNPC InitInfo);
 };

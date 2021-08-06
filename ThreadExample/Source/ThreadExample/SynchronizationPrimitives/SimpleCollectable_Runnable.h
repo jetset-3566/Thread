@@ -15,6 +15,7 @@ public:
 	FSimpleCollectable_Runnable(FColor Color, AThreadExampleGameModeBase* OwnerActor);
 	virtual ~FSimpleCollectable_Runnable() override;
 
+	//setting
 	AThreadExampleGameModeBase* GameMode_Ref = nullptr;
 	FThreadSafeBool bIsStopCollectable = false;
 	
@@ -22,5 +23,6 @@ public:
 	virtual void Stop() override;
 	virtual void Exit() override;
 
+	//IMessageBus Setting
 	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> SenderEndpoint;
 };

@@ -3,9 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "MessageEndpoint.h"
-#include "HAL/ThreadManager.h"
+
 
 class AThreadExampleGameModeBase;
 /**
@@ -22,14 +21,16 @@ class THREADEXAMPLE_API FSimpleMutex_Runnable : public FRunnable
 	AThreadExampleGameModeBase *GameMode_Ref = nullptr;
 	bool bIsGenerateSecondName = false;
 	FThreadSafeBool bIsStopNameGenerator = false;
-	//virtual bool Init() override;
+	
 	virtual uint32 Run() override;
 	virtual void Stop() override;
 	virtual void Exit() override;
-	
+
+	//random generators
 	int8 GetRandom(int8 min, int8 max);
 	bool GetRandom();
 
+	//IMessageBus Setting
 	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> SenderEndpoint;
 };
 

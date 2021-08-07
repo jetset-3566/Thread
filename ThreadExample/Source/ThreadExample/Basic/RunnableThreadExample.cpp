@@ -7,11 +7,8 @@
 
 FRunnableThreadExample::FRunnableThreadExample(int32 CalcInput, ARunnableExample* OwnerActor)
 {
-	if (CalcInput > 0 && OwnerActor)
-	{
-		Calculation = CalcInput;
-		CurrentThreadActor = OwnerActor;		
-	}
+	Calculation = CalcInput;
+	CurrentThreadActor = OwnerActor;
 }
 
 FRunnableThreadExample::~FRunnableThreadExample()
@@ -20,42 +17,26 @@ FRunnableThreadExample::~FRunnableThreadExample()
 
 bool FRunnableThreadExample::Init()
 {
-	bIsStopThread = false;
-	CalcCount = 0;
 	return true;
 }
 
 uint32 FRunnableThreadExample::Run()
 {
+	int32 CalcCount = 0;
 	while (!bIsStopThread)
 	{
-		if (CalcCount < Calculation && CurrentThreadActor)
+		if (CalcCount < Calculation)
 		{
-			
-			//FEvent wait - Condition Variable
-			//myCriticalSection.TryLock();
 			CurrentCalculation += FMath::RandRange(20, 400);
 			CurrentCalculation *= FMath::RandRange(2,500);
 			CurrentCalculation -= FMath::RandRange(10, 500);
 
-			CurrentThreadActor->ThreadCalcQueue.Enqueue(CurrentCalculation); 
+			CurrentThreadActor->CurrentCalc.Set(CurrentCalculation);
 
-			UE_LOG(LogTemp, Error, TEXT("FRunnableThreadExample::Run ownerId - %s  DATA - %d "), *CurrentThreadActor->GetName(), CurrentCalculation);
-
-			//myCriticalSection.Unlock();
-
-			CalcCount++;
-
+			//UE_LOG(LogTemp, Error, TEXT("FRunnableThreadExample::Run ownerId - %s  DATA - %d "), *CurrentThreadActor->GetName(), CurrentCalculation);
+			
 			FPlatformProcess::Sleep(0.002f);
-
-			CurrentThreadActor->CurrentCalc = CalcCount;
-
-			if (CurrentThreadActor->myGameMode)
-			{
-				
-				CurrentThreadActor->myGameMode->SetGlobalString("Thread Work");
-				CurrentThreadActor->myGameMode->SetGlobalValue(CurrentCalculation);
-			}
+			CalcCount++;
 		}
 		else
 		{
@@ -63,15 +44,7 @@ uint32 FRunnableThreadExample::Run()
 		}
 	}
 
-	return 0;
+	return 1;
 }
 
-void FRunnableThreadExample::Stop()
-{
 
-}
-
-void FRunnableThreadExample::Exit()
-{
-
-}

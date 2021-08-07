@@ -15,20 +15,16 @@ public:
 	FRunnableThreadExample(int32 CalcInput, ARunnableExample *OwnerActor);
 	~FRunnableThreadExample();
 
-	//FCriticalSection myCriticalSection;//mutex
+	FThreadSafeBool bIsStopThread = false;
 
-	bool bIsStopThread;
-
-	virtual bool Init();
-	virtual uint32 Run();
-	virtual void Stop();
-	virtual void Exit();
+	virtual bool Init() override;
+	virtual uint32 Run() override;
 
 private:
 
 	int32 Calculation;
-	int32 CalcCount;
-
-	ARunnableExample *CurrentThreadActor;
 	int32 CurrentCalculation;
+	
+	ARunnableExample *CurrentThreadActor;
+	
 };

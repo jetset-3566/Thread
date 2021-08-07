@@ -368,7 +368,7 @@ void AThreadExampleGameModeBase::EventMessageNPC(FInfoNPC NPCData)
 	UWorld *myWorld = GetWorld();
 	if (myWorld)
 	{
-		FVector SpawnLoc = FVector(1200.0f, 100.0f * cubeCout, 500.0f);
+		FVector SpawnLoc = FVector(SpawnCuteCubeLoc.X + (cubeCout * SpawnCuteCubeLoc_Step.X), SpawnCuteCubeLoc.Y + (cubeCout * SpawnCuteCubeLoc_Step.Y), SpawnCuteCubeLoc.Z + (cubeCout * SpawnCuteCubeLoc_Step.Z));
 		FRotator SpawnRot;
 		ADumbCuteCube* myCuteCube;
 		myCuteCube = Cast<ADumbCuteCube>(myWorld->SpawnActor(SpawnObjectThread, &SpawnLoc, &SpawnRot, FActorSpawnParameters()));

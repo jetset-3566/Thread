@@ -79,14 +79,6 @@ public:
 	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> ReceiveEndPoint_NameGenerator;
 	TSharedPtr<FMessageEndpoint, ESPMode::ThreadSafe> ReceiveEndpoint_NPCInfo;
 	//MessageBus Setting end
-	
-	UPROPERTY(BlueprintReadWrite)
-	FString GlobalString = "None";
-	UPROPERTY(BlueprintReadWrite)
-	int32 GlobalValue = 0;
-
-	void SetGlobalValue(int32 newValue){GlobalValue = newValue;}
-	void SetGlobalString(FString newString){GlobalString = newString;}
 
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
@@ -99,7 +91,7 @@ public:
 	//SimpleCounter Setting
 	UPROPERTY(BlueprintReadWrite, Category = "SimpleCounter setting")
 	bool bIsUseSafeVariable = true;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimpleCounter setting")
+	UPROPERTY(BlueprintReadWrite, Category = "SimpleCounter setting")
 	FColor ColorThread;
 	UPROPERTY(BlueprintReadWrite, Category = "SimpleCounter setting")
 	bool bIsUseFEvent = true;
@@ -186,8 +178,13 @@ public:
 	//TLockFreePointerList //Same TQueue (TQueue under the hood linked list(LockFreePointerList))
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimpleMutex setting")
 	TSubclassOf<class ADumbCuteCube> SpawnObjectThread;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimpleMutex setting")
+	FVector SpawnCuteCubeLoc;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimpleMutex setting")
+	FVector SpawnCuteCubeLoc_Step;
 	int32 cubeCout =0;
-
+	
+	
 	//ParallelFor
 	UFUNCTION(BlueprintCallable)
 	void StartParallelFor1();
